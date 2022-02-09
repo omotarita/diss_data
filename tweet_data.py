@@ -3,7 +3,7 @@ from cmath import nan
 from grapheme import startswith
 import pandas as pd
 import numpy as np
-import credentials, tweepy, requests, json, csv, os, math, re
+import credentials, tweepy, requests, json, csv, os, math, re, time
 
 # Authenticate to Twitter
 auth = tweepy.OAuthHandler(credentials.API_key, credentials.API_secret)
@@ -26,7 +26,7 @@ def generate_queries(df, nft):
     query_list = []
     i = 1
 
-    while i < 11:
+    while i < 7:
         column_name = f"Column{i}"
         query = ""
         trailing = " OR "
@@ -58,18 +58,19 @@ def generate_queries(df, nft):
         i += 1
 
 
-    print(query_list)
+    #print(query_list)
 
         #swap whitespace for "%20"
 
 
     return query_list
 
+
 def request_tweetcount(query_list, df):
     rw = 0
-    gran = "day"
+    gran = "hour"
 
-    for row in df:
+    while rw < len(df):
         end = df.iloc[rw]['End Time']
         start = df.iloc[rw]['Start Time']
 
@@ -87,36 +88,56 @@ def request_tweetcount(query_list, df):
 
             #API request
             result = client.get_recent_tweets_count(query = q, end_time = end, start_time = start, granularity = gran)
-            tweet_count = result['tweet_count']
+            meta = result[3]
+            tweet_count = meta['total_tweet_count']
+
 
 
             partitioned_string = query_list[n].partition(" OR")
             df_column = partitioned_string[0]
 
+            print(f"For {df_column} on {start}, the tweet count is {tweet_count}")
+
             #Add to dataframe
-            df.iloc[rw][df_column] = tweet_count
+            df.loc[rw, df_column] = tweet_count
 
             n += 1
 
+        time.sleep(30)
         rw += 1
 
     return df
 
-def concat_to_csv():
+def concat_to_csv(df, output_file):
+
+    df.to_csv(output_file, index=False)
 
     pass
 
 def main():
 
-    dataset_file = "tweet_count_template.csv"
-    nft_file = "nft_keywords.csv"
+    dataset_file = "tweetcount_template_pastweek2.csv"
+
+    #Comment out once tested
+    #dataset_file = "tweetcount_template_pastweek_copy.csv"
+
+    nft_file = "nft_keywords2.csv"
+    output_file = "tweetcount_pastweek.csv"
+
 
     df = pd.read_csv(dataset_file)
     nft = pd.read_csv(nft_file)
 
     query_list = generate_queries(df, nft)
     request_tweetcount(query_list, df)
-    
+    concat_to_csv(df, output_file)
+
+    '''test = client.get_recent_tweets_count(query = "Bored Ape Yacht Club", end_time = "2022-02-07T23:59:59Z", start_time = "2022-02-07T0:00:00Z", granularity = "day")
+
+    meta = test[3]
+    ttc_test = meta['total_tweet_count']
+
+    print(ttc_test)'''
     
     pass
 
