@@ -1,7 +1,6 @@
 # Write code that prepares your 
 import pandas as pd
 import numpy as np
-from tweepy. import 
 import requests, json, csv, os
 
 

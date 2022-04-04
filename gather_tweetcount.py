@@ -8,7 +8,7 @@ import credentials, tweepy, requests, json, csv, os, math, re, time
 # Authenticate to Twitter
 auth = tweepy.OAuthHandler(credentials.API_key, credentials.API_secret)
 auth.set_access_token(credentials.access_token, credentials.access_secret)
-api = tweepy.API(auth)
+api = tweepy.API(auth,wait_on_rate_limit=True)
 
 client = tweepy.Client(credentials.bearer_token)
 
@@ -83,27 +83,34 @@ def request_tweetcount(query_list, df):
 
         n = 0
         for element in query_list:
-            q = query_list[n]
-            
+            try:
+                q = query_list[n]
+                
 
-            #API request
-            result = client.get_recent_tweets_count(query = q, end_time = end, start_time = start, granularity = gran)
-            meta = result[3]
-            tweet_count = meta['total_tweet_count']
+                #API request
+                result = client.get_recent_tweets_count(query = q, end_time = end, start_time = start, granularity = gran)
+                meta = result[3]
+                tweet_count = meta['total_tweet_count']
 
 
 
-            partitioned_string = query_list[n].partition(" OR")
-            df_column = partitioned_string[0]
+                partitioned_string = query_list[n].partition(" OR")
+                df_column = partitioned_string[0]
 
-            print(f"For {df_column} on {start}, the tweet count is {tweet_count}")
+                print(f"For {df_column} on {start}, the tweet count is {tweet_count}")
 
-            #Add to dataframe
-            df.loc[rw, df_column] = tweet_count
+                #Add to dataframe
+                df.loc[rw, df_column] = tweet_count
 
-            n += 1
+                n += 1
 
-        time.sleep(30)
+            except tweepy.TooManyRequests:
+                time.sleep(60 * 15)
+                continue
+            except StopIteration:
+                break
+
+        #time.sleep(30)
         rw += 1
 
     return df
@@ -116,13 +123,13 @@ def concat_to_csv(df, output_file):
 
 def main():
 
-    dataset_file = "tweetcount_template_pastweek2.csv"
+    dataset_file = "tweetcount_files/tweet_counts_template.csv"
 
     #Comment out once tested
     #dataset_file = "tweetcount_template_pastweek_copy.csv"
 
     nft_file = "nft_keywords2.csv"
-    output_file = "tweetcount_pastweek.csv"
+    output_file = "tweetcount_files/tweet_counts_data.csv"
 
 
     df = pd.read_csv(dataset_file)
